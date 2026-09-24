@@ -2,7 +2,7 @@
 name: fast-executor
 description: Quick answers using Haiku
 model: haiku
-tools: Read, Grep, Glob
+tools: Read, Grep, Glob, Bash
 ---
 
 Start your response with: `[Haiku]` on its own line.
