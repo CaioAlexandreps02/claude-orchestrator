@@ -48,6 +48,16 @@ lista) -- a opcao de atualizar aparece dentro da tela de detalhe dele.
 - **Mensagem vaga ou de escopo grande** → vira plano automaticamente: gera plano → decompoe em etapas → aprovacao via Plan Mode → executa.
 - **Pedido explicito ("faz um plano pra X")** → pula direto pro modo de plano, sem passar pela analise de complexidade.
 
+## Estatísticas de uso
+
+Pergunte "estatísticas do roteador" ou "quanto tá economizando" a qualquer momento — a
+skill `router-stats` lê `~/.claude/orchestrator-stats.json` (global, entre todos os
+projetos) e mostra quantas mensagens foram classificadas, pra qual modelo cada uma foi, e
+uma economia estimada. **Ressalva importante**: a economia é um teto teórico (quanto
+teria economizado se toda sugestão tivesse sido seguida à risca, comparado a usar Opus
+pra tudo) — não mede se a sugestão foi realmente seguida, já que o Claude pode ignorá-la
+com julgamento quando não faz sentido.
+
 ## Agentes disponíveis
 
 ### Executores simples (modelo fixo, para mensagem solta)
