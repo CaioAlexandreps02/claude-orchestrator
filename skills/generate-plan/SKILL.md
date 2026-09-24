@@ -23,9 +23,10 @@ o que ja existe antes de propor algo -- evita plano que ignora convencao ja esta
 
 ## 3. Escrever o plano
 
-Direto, sem arquivo de sessao proprio -- e o texto que a proxima etapa (`decompose-plan`)
-vai ler. Prosa clara, sem implementacao de codigo completa (isso e trabalho da execucao, nao
-do plano): o que vai ser feito, por que, e como, legivel por alguem sem contexto previo.
+Chamar `EnterPlanMode` antes de explorar/escrever (exigido pelo Claude Code -- sem isso o
+`ExitPlanMode` do passo de aprovacao falha). Prosa clara, sem implementacao de codigo completa
+(isso e trabalho da execucao, nao do plano): o que vai ser feito, por que, e como, legivel por
+alguem sem contexto previo. Esse texto e o que a proxima etapa (`decompose-plan`) vai ler.
 
 ## 4. Revisao (opcional, so se o plano for grande/arriscado)
 

@@ -18,6 +18,44 @@ Este projeto adapta trechos (todos MIT) de:
 - [claude-code-workflow-orchestration](https://github.com/barkain/claude-code-workflow-orchestration) — Nadav Barkai
 - [deep-plan](https://github.com/piercelamb/deep-plan) — Pierce Lamb
 
+## Instalacao
+
+```
+/plugin marketplace add <user>/claude-orchestrator
+/plugin install claude-orchestrator@claude-orchestrator
+```
+
+## Requisitos
+
+- Claude Code
+- Python 3
+- `ANTHROPIC_API_KEY` (opcional) — so usada pro fallback de classificacao via Haiku quando a confianca da regra e baixa
+
+## Como funciona no dia a dia
+
+- **Mensagem simples/objetiva** → vai direto pro roteador de modelo, que escolhe Haiku, Sonnet ou Opus conforme a complexidade.
+- **Mensagem vaga ou de escopo grande** → vira plano automaticamente: gera plano → decompoe em etapas → aprovacao via Plan Mode → executa.
+- **Pedido explicito ("faz um plano pra X")** → pula direto pro modo de plano, sem passar pela analise de complexidade.
+
+## Agentes disponíveis
+
+### Executores simples (modelo fixo, para mensagem solta)
+
+- **fast-executor** — Respostas rápidas usando Haiku para tarefas leves e diretas.
+- **standard-executor** — Tarefas padrão de programação usando Sonnet com ferramenta completa.
+- **deep-executor** — Análise profunda usando Opus para problemas complexos que precisam de raciocínio aprofundado.
+
+### Agentes especializados (modelo escolhido dinamicamente pela decomposição do plano)
+
+- **tech-lead-architect** — Desenha abordagens de implementação, pesquisa melhores práticas, avalia escolhas tecnológicas e arquiteta soluções.
+- **code-reviewer** — Revisão de código especializada em boas práticas, qualidade, manutenibilidade e segurança.
+- **codebase-context-analyzer** — Compreende estrutura do código, padrões, dependências e arquitetura da base.
+- **dependency-manager** — Gerencia dependências Python, atualiza pacotes, resolve conflitos e valida compatibilidade.
+- **devops-experience-architect** — Configura ambientes, pipelines CI/CD, gestão de secrets, containerização e infraestrutura de deployment.
+- **documentation-expert** — Cria, atualiza ou revisa documentação de código, arquitetura e APIs.
+- **task-completion-verifier** — Valida que entregas atendem requisitos, critérios de aceitação e casos extremos.
+- **code-cleanup-optimizer** — Remove débito técnico, melhora qualidade e elimina redundância após implementação verificada.
+
 ## Status
 
 Em construcao. Ver `docs/plano-implementacao.md` pra fase atual.

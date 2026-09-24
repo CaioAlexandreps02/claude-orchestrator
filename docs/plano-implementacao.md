@@ -85,19 +85,36 @@ Pedida pelo Caio antes de testar de ponta a ponta. 4 achados reais, todos corrig
 Revalidado depois dos 4 fixes: script compila, JSON válido, frontmatter dos 11 agentes íntegro,
 os 4 testes de regressão (simples/plano-explícito/deep-PT/deep-vago-3-casos) passando.
 
-## Fase 7 — Teste manual
-- Caminho simples: mandar mensagem direta tipo "corrige esse typo" → confirmar que vai reto pro
-  roteador, sem passar por plano.
-- Caminho plano explícito: "faz um plano pra X" → confirmar que pula a análise de complexidade.
-- Caminho plano por complexidade: pedido vago e grande → confirmar que decompõe, classifica por
-  etapa, mostra aprovação com modelo por etapa, executa respeitando dependência.
+## Fase 8 — Empacotar e instalar (CONCLUÍDA)
+Repo criado em `github.com/CaioAlexandreps02/claude-orchestrator` (não `CaioEmbrepoli` —
+`gh` só tinha a conta MeuJudi logada; testado com `ssh -T` qual chave autentica como qual
+conta antes de escolher). Commit + push feitos, `/plugin marketplace add` + `/plugin install`
+rodados pelo Caio (esse passo só ele consegue fazer — registro de confiança de plugin é
+bloqueado pra mim por design). Instalado com sucesso, os dois hooks (claude-router antigo +
+claude-orchestrator novo) dispararam juntos na primeira mensagem depois — não desinstalamos
+os 3 originais ainda, só depois de validar a Fase 7.
 
-## Fase 8 — Empacotar e instalar
-- Commit + push pro repo novo.
-- `/plugin marketplace add <seu-usuário>/claude-orchestrator` + `/plugin install
-  claude-orchestrator@claude-orchestrator`.
-- Depois de validar que funciona, desinstalar os 3 originais (`claude-router`, e os outros 2 se
-  também tiverem sido instalados) pra não ter hooks duplicados brigando.
+## Fase 7 — Teste manual (CONCLUÍDA, depois da Fase 8 por necessidade)
+Corrigida a ordem do plano original: testar despacho real nos agentes `claude-orchestrator:*`
+exige o plugin instalado primeiro (sem isso, `Task(subagent_type="claude-orchestrator:X")`
+falha por o Claude Code não conhecer o agente). Feito depois da Fase 8, com o plugin de
+verdade instalado:
+
+- **Caminho simples**: testado via script direto (Fase 1) — confirmado.
+- **Caminho plano explícito**: testado via script direto (Fase 1) — confirmado.
+- **Caminho completo de ponta a ponta, ao vivo**: usado o próprio README do projeto como
+  teste real (dogfooding) — `claude-orchestrator:documentation-expert` revisou o README e
+  achou gaps reais (faltava instalação/uso/roster) → `EnterPlanMode` → plano com 2 etapas
+  decompostas → `ExitPlanMode` aprovado pelo Caio → Onda 1 (Sonnet, `general-purpose`) →
+  esperou terminar → Onda 2 (Haiku, `claude-orchestrator:documentation-expert`) → README
+  final coerente, descrições dos 8 agentes batendo com o frontmatter real de cada um.
+
+**2 achados novos, só apareceram testando ao vivo (não dava pra pegar só lendo código):**
+1. `generate-plan` não mencionava `EnterPlanMode` (só `ExitPlanMode`) — sem isso a aprovação
+   falha. Corrigido na skill.
+2. Duas etapas no MESMO arquivo precisam ficar em ondas separadas mesmo sem dependência
+   lógica de conteúdo — edição simultânea no mesmo arquivo por dois agentes é risco de
+   conflito de escrita. Virou regra explícita no `decompose-plan`.
 
 ## Ordem sugerida
 0 → 1 → 3 (só a parte de decomposição, sem geração ainda, testando com plano escrito à mão) → 4 →

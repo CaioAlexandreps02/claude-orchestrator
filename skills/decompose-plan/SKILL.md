@@ -36,6 +36,11 @@ Etapa B depende de A quando B usa algo que A produz e que nao existe antes de A 
 "depois de", ou opera em cima de algo que so a etapa A cria. Etapas sem essa relacao entre
 si sao independentes.
 
+**Regra extra confirmada em teste real:** duas etapas que editam o MESMO arquivo contam como
+dependentes entre si mesmo sem relacao logica de conteudo -- dois agentes editando o mesmo
+arquivo ao mesmo tempo e risco de conflito de escrita, nao so questao de ordem de ideias.
+Nesse caso, a etapa que vem depois na ordem natural do plano fica numa onda posterior.
+
 ## Agrupar em ondas (pra Fase 6 -- sequencia vs paralelo)
 
 Onda 1 = etapas sem dependencia pendente (todas rodam em paralelo). Onda 2 = etapas cujas
