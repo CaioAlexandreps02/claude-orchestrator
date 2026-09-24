@@ -207,7 +207,11 @@ def classify_by_rules(prompt: str) -> dict:
     if fast_signals:
         return {"route": "fast", "confidence": 0.7, "signals": fast_signals, "method": "rules"}
 
-    return {"route": "fast", "confidence": 0.5, "signals": ["no strong patterns"], "method": "rules"}
+    # ponytail: sem sinal forte de fast nem deep, o default e "standard" (Sonnet),
+    # nao "fast" -- a maior parte do trabalho de codigo sem marcador especial e
+    # implementacao normal, nao tarefa mecanica. "fast" continua alcancavel, so
+    # precisa de sinal de verdade (regex ou LLM fallback com ANTHROPIC_API_KEY).
+    return {"route": "standard", "confidence": 0.5, "signals": ["no strong patterns"], "method": "rules"}
 
 
 def classify_by_llm(prompt: str, api_key: str) -> dict:
