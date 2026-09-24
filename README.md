@@ -25,6 +25,16 @@ Este projeto adapta trechos (todos MIT) de:
 /plugin install claude-orchestrator@claude-orchestrator
 ```
 
+## Atualizar depois de uma mudanca
+
+O cache do plugin e organizado por numero de versao (`.claude-plugin/plugin.json`), entao toda
+mudanca real precisa de um bump de versao, senao o Claude Code acha que ja tem e nao busca de
+novo -- reinstalar sem bumpar a versao nao resolve.
+
+Depois do bump + commit + push, pra puxar a versao nova sem precisar desinstalar: na tela de
+Plugins (Configuracoes -> Plugins), **entra no plugin** (nao so o menu de tres pontinhos da
+lista) -- a opcao de atualizar aparece dentro da tela de detalhe dele.
+
 ## Requisitos
 
 - Claude Code
