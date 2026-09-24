@@ -1,0 +1,17 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "claude-orchestrator",
+  "description": "Roteamento de modelo por complexidade + geracao/decomposicao de plano em um plugin so.",
+  "owner": {
+    "name": "Caio Embrepoli",
+    "url": "https://github.com/CaioAlexandreps02"
+  },
+  "plugins": [
+    {
+      "name": "claude-orchestrator",
+      "description": "Classifica, roteia, planeja e decompoe automaticamente.",
+      "source": "./",
+      "category": "productivity"
+    }
+  ]
+}
