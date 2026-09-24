@@ -1,5 +1,22 @@
 # Plano de Implementação — Plugin Orquestrador
 
+## Bugs encontrados e corrigidos (lista consolidada)
+
+9 achados reais ao todo, entre auditoria de código e testes ao vivo com o plugin instalado.
+Nenhum foi hipotético — todos reproduzidos antes do fix e revalidados depois.
+
+| # | Onde | O que quebrava | Como achou | Fix |
+|---|------|-----------------|------------|-----|
+| 1 | `decompose-plan`, `execute-plan` | `subagent_type="geral"` não existe — `Task()` falharia | Auditoria de código | Trocado pelo agente nativo `general-purpose` |
+| 2 | 8 agentes do roster (barkain) | Carregavam protocolo `DONE\|{path}` do harness original — nosso `execute-plan` não sabia ler isso, ia receber lixo em vez do resultado | Auditoria de código | Removido o bloco de protocolo, mantida só a identidade/expertise de cada agente |
+| 3 | `task-completion-verifier.md` | Seção "MANIFEST-DRIVEN VERIFICATION" assumia manifesto que só o harness do barkain fornece | Auditoria de código | Removida |
+| 4 | `code-reviewer.md` | Campo `activation_keywords` — mecanismo de dispatch por palavra-chave que a gente decidiu não usar (Fase 3 usa julgamento, não regex) | Auditoria de código | Removido |
+| 5 | `generate-plan` | Faltava `EnterPlanMode` — só tinha `ExitPlanMode`, que falha sem entrar em plan mode antes | Teste real de ponta a ponta (bati o erro na hora) | Adicionado à skill |
+| 6 | `decompose-plan` | Duas etapas no MESMO arquivo podiam ficar na mesma onda (paralelo) mesmo sem dependência lógica — risco de conflito de edição simultânea | Teste real (as 2 etapas do README) | Regra nova: mesmo arquivo = ondas separadas |
+| 7 | `fast-executor.md` | Só tinha `Read, Grep, Glob` — mas o classificador marca comandos git como "fast", e sem Bash o agente não conseguia rodar o que prometia | Teste real (pedi `git log` pro fast-executor) | Adicionado `Bash` ao tools |
+| 8 | `classify-prompt.py` | Tier **"standard" (Sonnet) inalcançável** sem `ANTHROPIC_API_KEY` — sem sinal forte, o default sempre caía em "fast", nunca em "standard" | Teste real ("implementa validação de CPF" foi pra Haiku) | Default do fallback trocado de "fast" pra "standard" |
+| 9 | `classify-prompt.py` (PLAN_TRIGGER_PATTERNS) | "plano" sozinho em PT é ambíguo (implementação vs. assinatura/saúde/celular) — `"quero um plano mais barato de internet"` disparava o modo de plano | Bateria de 20 testes variados (stress test do classificador) | Removido o padrão solto `"quero um plano"`; os outros exigem verbo de criação + objeto (`de/para/pra`) |
+
 Baseado no design fechado em `2026-09-24-grill.md`. Licenças checadas: claude-router (bmersereau),
 barkain/claude-code-workflow-orchestration e piercelamb/deep-plan são todos MIT — dá pra reaproveitar
 e adaptar código deles, mantendo crédito no README do plugin novo.

@@ -45,11 +45,15 @@ AVG_INPUT_TOKENS = 1000
 AVG_OUTPUT_TOKENS = 2000
 
 # Explicit plan request -> skip classification entirely, go straight to plan mode.
+# ponytail: "plano" sozinho e ambiguo em PT (plano de implementacao vs plano de
+# assinatura/saude/celular) -- achado real em teste: "quero um plano mais barato
+# de internet" disparava isso. So confia em padroes que amarram "plano" a um
+# verbo de CRIACAO (fazer/gerar/planejar), nunca em "quero/preciso um plano"
+# sozinho, que e ambiguo de verdade mesmo pra humano lendo frio.
 PLAN_TRIGGER_PATTERNS = [
-    r"\b(fa[çc]a|faz|cri[ae]|gera|monta|elabora)\s+um\s+plano\b",
+    r"\b(fa[çc]a|faz|cri[ae]|gera|monta|elabora)\s+um\s+plano\s+(de|para|pra)\b",
     r"\bplano\s+de\s+implementa[çc][ãa]o\b",
     r"\bplaneja\b",
-    r"\bquero\s+um\s+plano\b",
     r"^/plan\b",
 ]
 
