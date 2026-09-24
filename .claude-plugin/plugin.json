@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "Classifica mensagens por complexidade, roteia direto pro modelo certo (Haiku/Sonnet/Opus) quando e simples, ou gera plano + decompoe em etapas com modelo proprio por etapa quando nao e.",
   "author": {
-    "name": "Caio Embrepoli",
+    "name": "Caio Alexandre",
     "url": "https://github.com/CaioAlexandreps02"
   },
   "hooks": "./hooks/hooks.json"
