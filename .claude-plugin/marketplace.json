@@ -11,6 +11,7 @@
       "name": "claude-orchestrator",
       "description": "Classifica, roteia, planeja e decompoe automaticamente.",
       "source": "./",
+      "version": "0.2.0",
       "category": "productivity"
     }
   ]
