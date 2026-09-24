@@ -50,8 +50,9 @@ lista) -- a opcao de atualizar aparece dentro da tela de detalhe dele.
 
 ## Estatísticas de uso
 
-Pergunte "estatísticas do roteador" ou "quanto tá economizando" a qualquer momento — a
-skill `router-stats` lê `~/.claude/orchestrator-stats.json` (global, entre todos os
+Digite `/router-stats` (atalho direto) ou pergunte "estatísticas do roteador"/"quanto tá
+economizando" em linguagem natural — os dois fazem a mesma coisa: lê
+`~/.claude/orchestrator-stats.json` (global, entre todos os
 projetos) e mostra quantas mensagens foram classificadas, pra qual modelo cada uma foi, e
 uma economia estimada. **Ressalva importante**: a economia é um teto teórico (quanto
 teria economizado se toda sugestão tivesse sido seguida à risca, comparado a usar Opus
