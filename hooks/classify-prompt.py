@@ -13,25 +13,9 @@ import json
 import sys
 import os
 import re
+import tempfile
 from pathlib import Path
 from datetime import datetime
-# Cross-platform file locking
-import platform
-if platform.system() == "Windows":
-    import msvcrt
-    def lock_file(f, exclusive=False):
-        msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK if exclusive else msvcrt.LK_LOCK, 1)
-    def unlock_file(f):
-        try:
-            msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
-        except OSError:
-            pass
-else:
-    import fcntl
-    def lock_file(f, exclusive=False):
-        fcntl.flock(f.fileno(), fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH)
-    def unlock_file(f):
-        fcntl.flock(f.fileno(), fcntl.LOCK_UN)
 
 CONFIDENCE_THRESHOLD = 0.7
 STATS_FILE = Path.home() / ".claude" / "orchestrator-stats.json"
@@ -127,14 +111,14 @@ def get_api_key():
     ]
     for env_path in search_paths:
         try:
-            with open(env_path, "r") as f:
+            with open(env_path, "r", encoding="utf-8", errors="ignore") as f:
                 content = f.read()
                 for line in content.split("\n"):
                     if line.startswith("ANTHROPIC_API_KEY="):
                         return line.strip().split("=", 1)[1].strip('"\'')
                 if content.strip().startswith("sk-ant-"):
                     return content.strip()
-        except (FileNotFoundError, PermissionError):
+        except (FileNotFoundError, PermissionError, OSError):
             continue
     return None
 
@@ -154,10 +138,8 @@ def log_routing_decision(route: str, confidence: float, method: str, signals: li
         }
         if STATS_FILE.exists():
             try:
-                with open(STATS_FILE, "r") as f:
-                    lock_file(f, exclusive=False)
+                with open(STATS_FILE, "r", encoding="utf-8") as f:
                     stats = json.load(f)
-                    unlock_file(f)
             except (json.JSONDecodeError, IOError):
                 pass
 
@@ -181,10 +163,22 @@ def log_routing_decision(route: str, confidence: float, method: str, signals: li
         stats["sessions"] = sorted(stats["sessions"], key=lambda x: x["date"], reverse=True)[:30]
         stats["last_updated"] = datetime.now().isoformat()
 
-        with open(STATS_FILE, "w") as f:
-            lock_file(f, exclusive=True)
-            json.dump(stats, f, indent=2)
-            unlock_file(f)
+        # ponytail: escreve em arquivo temp + os.replace (atomico) em vez de
+        # abrir STATS_FILE direto em "w" -- isso trunca o arquivo ANTES do lock
+        # ser adquirido, entao dois hooks concorrentes (duas sessoes abertas)
+        # podiam deixar o stats vazio/corrompido. os.replace nunca deixa o
+        # arquivo num estado parcial, nao depende da granularidade do lock.
+        fd, tmp_path = tempfile.mkstemp(dir=STATS_FILE.parent, suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w") as f:
+                json.dump(stats, f, indent=2)
+            os.replace(tmp_path, STATS_FILE)
+        except Exception:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
     except Exception:
         pass  # stats logging must never fail the hook
 
@@ -223,7 +217,9 @@ def classify_by_llm(prompt: str, api_key: str) -> dict:
         from anthropic import Anthropic
     except ImportError:
         return None
-    client = Anthropic(api_key=api_key)
+    # timeout curto: isso e so uma sugestao de rota, nao vale travar a mensagem
+    # do usuario esperando rede lenta -- fix real de teste ao vivo (code-reviewer)
+    client = Anthropic(api_key=api_key, timeout=5.0)
     classification_prompt = f"""Classify this coding query into exactly one route. Return ONLY valid JSON, no other text.
 
 Query: "{prompt}"
@@ -246,10 +242,23 @@ Return JSON only:
             if response_text.startswith("json"):
                 response_text = response_text[4:].strip()
         result = json.loads(response_text)
+        # ponytail: a LLM pode alucinar fora do schema (route invalido, campo
+        # faltando, confidence como string) -- validar antes de devolver, senao
+        # o main() quebra tentando indexar subagent_map[route] com KeyError.
+        if not isinstance(result, dict) or result.get("route") not in ("fast", "standard", "deep"):
+            return None
+        result.setdefault("confidence", 0.5)
+        result.setdefault("signals", ["llm classification"])
+        if not isinstance(result["confidence"], (int, float)):
+            result["confidence"] = 0.5
+        if not isinstance(result["signals"], list):
+            result["signals"] = [str(result["signals"])]
         result["method"] = "haiku-llm"
         return result
-    except Exception as e:
-        print(f"LLM classification error: {e}", file=sys.stderr)
+    except Exception:
+        # nao logar a excecao crua -- evita vazar detalhe de erro de cliente
+        # HTTP que a lib pode mudar no futuro
+        print("LLM classification error (fallback to rules)", file=sys.stderr)
         return None
 
 
@@ -270,39 +279,48 @@ def main():
     except json.JSONDecodeError:
         sys.exit(0)
 
+    # ponytail: payload pode vir malformado (lista, string, numero) em vez de
+    # dict -- .get() direto quebraria com AttributeError
+    if not isinstance(input_data, dict):
+        sys.exit(0)
+
     prompt = input_data.get("prompt", "")
-    if not prompt or len(prompt) < 10:
+    if not isinstance(prompt, str) or not prompt or len(prompt) < 10:
         sys.exit(0)
     if prompt.strip().startswith("/"):
         sys.exit(0)
 
-    if is_plan_request(prompt):
-        log_routing_decision("plan", 1.0, "plan-trigger", ["explicit plan request"])
-        context = """[claude-orchestrator] PLAN MODE TRIGGERED
+    # ponytail: tudo daqui pra frente e classificacao best-effort -- qualquer
+    # excecao nao prevista NUNCA deve travar/quebrar a mensagem do usuario.
+    # Falha aberta (sys.exit(0), sem sugestao de rota) em vez de propagar.
+    try:
+        if is_plan_request(prompt):
+            log_routing_decision("plan", 1.0, "plan-trigger", ["explicit plan request"])
+            context = """[claude-orchestrator] PLAN MODE TRIGGERED
 Explicit plan request detected. Skip the fast/standard/deep classifier.
 
 Use the generate-plan skill to produce the plan, then decompose-plan to break
 it into steps with a model tier and dependencies each, then execute-plan
 (after ExitPlanMode approval) to run it."""
-        print(json.dumps({"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": context}}))
-        sys.exit(0)
+            print(json.dumps({"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": context}}))
+            sys.exit(0)
 
-    result = classify_hybrid(prompt)
-    route = result["route"]
-    confidence = result["confidence"]
-    signals = result["signals"]
-    method = result.get("method", "rules")
+        result = classify_hybrid(prompt)
+        route = result["route"]
+        confidence = result["confidence"]
+        signals = result["signals"]
+        method = result.get("method", "rules")
 
-    log_routing_decision(route, confidence, method, signals)
+        log_routing_decision(route, confidence, method, signals)
 
-    subagent_map = {"fast": "fast-executor", "standard": "standard-executor", "deep": "deep-executor"}
-    model_map = {"fast": "Haiku", "standard": "Sonnet", "deep": "Opus"}
-    subagent = subagent_map[route]
-    model = model_map[route]
-    signals_str = ", ".join(signals)
+        subagent_map = {"fast": "fast-executor", "standard": "standard-executor", "deep": "deep-executor"}
+        model_map = {"fast": "Haiku", "standard": "Sonnet", "deep": "Opus"}
+        subagent = subagent_map.get(route, "standard-executor")
+        model = model_map.get(route, "Sonnet")
+        signals_str = ", ".join(str(s) for s in signals)
 
-    if route == "deep":
-        context = f"""[claude-orchestrator] ROUTING SUGGESTION
+        if route == "deep":
+            context = f"""[claude-orchestrator] ROUTING SUGGESTION
 Route: deep | Confidence: {confidence:.0%} | Method: {method}
 Signals: {signals_str}
 
@@ -314,8 +332,8 @@ This looks complex. Two sub-cases -- judge which one, the classifier can't:
 - Actually a single standalone deep task, not plan-shaped -> spawn
   "claude-orchestrator:deep-executor" via Task instead.
 Skip all of this for: questions about the orchestrator itself, or mid-plan work."""
-    else:
-        context = f"""[claude-orchestrator] ROUTING SUGGESTION
+        else:
+            context = f"""[claude-orchestrator] ROUTING SUGGESTION
 Route: {route} | Model: {model} | Confidence: {confidence:.0%} | Method: {method}
 Signals: {signals_str}
 
@@ -325,9 +343,14 @@ Skip this for: questions about the orchestrator itself, mid-plan work, or
 anything requiring judgment this classifier can't see (short/ambiguous
 prompts default to "fast" even when the real task is bigger)."""
 
-    output = {"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": context}}
-    print(json.dumps(output))
-    sys.exit(0)
+        output = {"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": context}}
+        print(json.dumps(output))
+        sys.exit(0)
+    except SystemExit:
+        raise
+    except Exception:
+        # nunca travar/bloquear a mensagem do usuario por falha do classificador
+        sys.exit(0)
 
 
 if __name__ == "__main__":

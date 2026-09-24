@@ -40,6 +40,7 @@ lista) -- a opcao de atualizar aparece dentro da tela de detalhe dele.
 - Claude Code
 - Python 3
 - `ANTHROPIC_API_KEY` (opcional) — so usada pro fallback de classificacao via Haiku quando a confianca da regra e baixa
+- pacote `anthropic` (opcional, `pip install anthropic`) — so necessario se configurar a chave acima; sem ele, o fallback fica desativado silenciosamente e o classificador continua so por regra
 
 ## Como funciona no dia a dia
 

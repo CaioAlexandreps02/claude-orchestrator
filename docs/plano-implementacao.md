@@ -2,8 +2,10 @@
 
 ## Bugs encontrados e corrigidos (lista consolidada)
 
-9 achados reais ao todo, entre auditoria de código e testes ao vivo com o plugin instalado.
-Nenhum foi hipotético — todos reproduzidos antes do fix e revalidados depois.
+10 achados reais ao todo, entre auditoria de código e testes ao vivo com o plugin instalado.
+Nenhum foi hipotético — todos reproduzidos antes do fix e revalidados depois. Tem também 1
+"quase-achado" que investiguei a fundo e **não** confirmei — registrado embaixo pra não
+esquecer que já foi checado.
 
 | # | Onde | O que quebrava | Como achou | Fix |
 |---|------|-----------------|------------|-----|
@@ -16,6 +18,18 @@ Nenhum foi hipotético — todos reproduzidos antes do fix e revalidados depois.
 | 7 | `fast-executor.md` | Só tinha `Read, Grep, Glob` — mas o classificador marca comandos git como "fast", e sem Bash o agente não conseguia rodar o que prometia | Teste real (pedi `git log` pro fast-executor) | Adicionado `Bash` ao tools |
 | 8 | `classify-prompt.py` | Tier **"standard" (Sonnet) inalcançável** sem `ANTHROPIC_API_KEY` — sem sinal forte, o default sempre caía em "fast", nunca em "standard" | Teste real ("implementa validação de CPF" foi pra Haiku) | Default do fallback trocado de "fast" pra "standard" |
 | 9 | `classify-prompt.py` (PLAN_TRIGGER_PATTERNS) | "plano" sozinho em PT é ambíguo (implementação vs. assinatura/saúde/celular) — `"quero um plano mais barato de internet"` disparava o modo de plano | Bateria de 20 testes variados (stress test do classificador) | Removido o padrão solto `"quero um plano"`; os outros exigem verbo de criação + objeto (`de/para/pra`) |
+| 10 | `classify-prompt.py` (robustez, 7 sub-fixes) | Hook podia travar a mensagem do usuário em vários cenários: exceção não tratada em `main()`; resposta da LLM fora do schema esperado (`KeyError`); chamada à API sem timeout (podia pendurar); escrita do stats file truncava antes do lock (corrompia em concorrência); leitura de `.env` sem encoding explícito (`UnicodeDecodeError`); payload do hook não validado como dict; erro de LLM logado cru no stderr | Code review dedicado (agente `code-reviewer`) pedido depois da bateria de testes, validado com 6 payloads malformados + 15 chamadas concorrentes de verdade | `try/except` amplo no `main()` (falha aberta, nunca bloqueia o prompt); validação de schema da resposta LLM; timeout de 5s na API; escrita atômica do stats via arquivo temp + `os.replace` (locking manual removido, virou redundante); encoding UTF-8 explícito na leitura do `.env`; validação de `input_data` como dict; log genérico em vez de exceção crua |
+
+**Investigado e NÃO confirmado** — o agente `deep-executor` (rodado no mesmo lote do achado
+#10) alegou que `sys.stdin` no Windows lê em cp1252 e corrompe todo acento em português,
+citando "faça um plano de migração" como reprodução ("saiu standard, não disparou plano").
+Reproduzi a alegação da forma mais fiel possível (pipe de bytes UTF-8 reais via `subprocess`,
+simulando exatamente como o host chama o hook) e o resultado saiu **correto** em todos os
+casos — inclusive o exato que o agente citou. Conferi byte a byte (hex dump) pra não confiar só
+na exibição no terminal (que de fato mostra `�` por conta de um problema de rendering do
+Git Bash neste Windows, não por corrupção real do dado). Ou seja: o achado do agente não se
+sustentou sob verificação independente — registrado aqui como alerta de que até relatório de
+agente precisa ser conferido antes de virar fix, não só confiado.
 
 Baseado no design fechado em `2026-09-24-grill.md`. Licenças checadas: claude-router (bmersereau),
 barkain/claude-code-workflow-orchestration e piercelamb/deep-plan são todos MIT — dá pra reaproveitar
