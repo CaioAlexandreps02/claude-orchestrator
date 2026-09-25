@@ -158,6 +158,7 @@ def log_routing_decision(route: str, confidence: float, method: str, signals: li
         stats["routes"].setdefault(route, 0)
         stats["routes"][route] += 1
 
+        savings = 0.0
         if route in COST_PER_1M:
             savings = calculate_cost("deep") - calculate_cost(route)
             stats["estimated_savings"] += savings
@@ -170,6 +171,10 @@ def log_routing_decision(route: str, confidence: float, method: str, signals: li
         session["queries"] += 1
         session["routes"].setdefault(route, 0)
         session["routes"][route] += 1
+        # ponytail: bug real (achado 25/09) -- essa linha faltava, "savings" por
+        # sessao ficava sempre 0.0 mesmo com o total agregado calculado certo.
+        session.setdefault("savings", 0.0)
+        session["savings"] += savings
 
         stats["sessions"] = sorted(stats["sessions"], key=lambda x: x["date"], reverse=True)[:30]
         stats["last_updated"] = datetime.now().isoformat()
