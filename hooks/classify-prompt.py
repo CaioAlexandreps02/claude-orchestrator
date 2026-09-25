@@ -63,6 +63,17 @@ PATTERNS = {
         r"^(mostra|lista|pega) .{0,30}$",
         r"\b(formata|padroniza)\b",
         r"^(o que|qual|como).{0,50}\?$",
+        # ponytail: confirmacao/continuacao curta -- achado real (25/09): sem
+        # isso, toda mensagem de "sim", "pode seguir", "atualizei pode testar"
+        # cai no default "standard" (Sonnet) por falta de sinal, empurrando o
+        # custo medio pra cima sem necessidade (a mensagem em si e trivial).
+        # O `.{0,25}$` limita ao TOTAL da mensagem ficar curto -- uma frase tipo
+        # "ok, mas antes disso implementa X" tem muito mais que 25 chars depois
+        # de "ok" e NAO bate aqui, cai pro classificador normal como deveria.
+        r"^(sim|n[ãa]o|ok|okay|beleza|blz|perfeito|certo|exato|isso|combinado|fechado|show|top)\b.{0,25}$",
+        r"^(pode (seguir|continuar|testar)|continua|segue|pr[óo]ximo)\b.{0,25}$",
+        r"^(atualizei|feito|pronto|conclu[ií]do)\b.{0,25}$",
+        r"^(funcionou|deu certo|terminou|j[áa] foi)\??\b.{0,15}$",
     ],
     "deep": [
         r"\b(architect|architecture|design pattern|system design)\b",

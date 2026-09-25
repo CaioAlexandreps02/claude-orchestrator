@@ -2,10 +2,11 @@
 
 ## Bugs encontrados e corrigidos (lista consolidada)
 
-10 achados reais ao todo, entre auditoria de código e testes ao vivo com o plugin instalado.
+11 achados reais ao todo, entre auditoria de código e testes ao vivo com o plugin instalado.
 Nenhum foi hipotético — todos reproduzidos antes do fix e revalidados depois. Tem também 1
-"quase-achado" que investiguei a fundo e **não** confirmei — registrado embaixo pra não
-esquecer que já foi checado.
+"quase-achado" que investiguei a fundo e **não** confirmei, e 1 bug pré-existente achado mas
+**não corrigido** ainda (fora de escopo do que foi pedido) — ambos registrados embaixo pra
+não esquecer que já foram checados.
 
 | # | Onde | O que quebrava | Como achou | Fix |
 |---|------|-----------------|------------|-----|
@@ -19,6 +20,7 @@ esquecer que já foi checado.
 | 8 | `classify-prompt.py` | Tier **"standard" (Sonnet) inalcançável** sem `ANTHROPIC_API_KEY` — sem sinal forte, o default sempre caía em "fast", nunca em "standard" | Teste real ("implementa validação de CPF" foi pra Haiku) | Default do fallback trocado de "fast" pra "standard" |
 | 9 | `classify-prompt.py` (PLAN_TRIGGER_PATTERNS) | "plano" sozinho em PT é ambíguo (implementação vs. assinatura/saúde/celular) — `"quero um plano mais barato de internet"` disparava o modo de plano | Bateria de 20 testes variados (stress test do classificador) | Removido o padrão solto `"quero um plano"`; os outros exigem verbo de criação + objeto (`de/para/pra`) |
 | 10 | `classify-prompt.py` (robustez, 7 sub-fixes) | Hook podia travar a mensagem do usuário em vários cenários: exceção não tratada em `main()`; resposta da LLM fora do schema esperado (`KeyError`); chamada à API sem timeout (podia pendurar); escrita do stats file truncava antes do lock (corrompia em concorrência); leitura de `.env` sem encoding explícito (`UnicodeDecodeError`); payload do hook não validado como dict; erro de LLM logado cru no stderr | Code review dedicado (agente `code-reviewer`) pedido depois da bateria de testes, validado com 6 payloads malformados + 15 chamadas concorrentes de verdade | `try/except` amplo no `main()` (falha aberta, nunca bloqueia o prompt); validação de schema da resposta LLM; timeout de 5s na API; escrita atômica do stats via arquivo temp + `os.replace` (locking manual removido, virou redundante); encoding UTF-8 explícito na leitura do `.env`; validação de `input_data` como dict; log genérico em vez de exceção crua |
+| 11 | `classify-prompt.py` (PATTERNS["fast"]) | **Consequência direta do #8**: com o default virando "standard", toda confirmação curta ("sim", "pode seguir", "atualizei pode testar", "funcionou?") também caía em "standard" (Sonnet) por falta de sinal — mensagens triviais custando o mesmo que uma implementação real. Custo médio por mensagem medido subiu de $0.0316 (24/09) pra $0.0418 (25/09), ~33% num dia, batendo com a virada do #8 | Caio notou "está usando muito o Sonnet e muito pouco o Haiku" comparando o dia de uso normal com o dia anterior (só rodava à noite) | 4 padrões novos em `PATTERNS["fast"]`, todos ancorados `^...\b.{0,N}$` (N=15 a 25) pra só bater quando a mensagem INTEIRA é curta — testado especificamente contra o caso adversarial "ok, mas antes disso implementa um sistema completo de X", que continua caindo em standard/deep corretamente, não em fast |
 
 **Investigado e NÃO confirmado** — o agente `deep-executor` (rodado no mesmo lote do achado
 #10) alegou que `sys.stdin` no Windows lê em cp1252 e corrompe todo acento em português,
@@ -30,6 +32,16 @@ na exibição no terminal (que de fato mostra `�` por conta de um problema de 
 Git Bash neste Windows, não por corrupção real do dado). Ou seja: o achado do agente não se
 sustentou sob verificação independente — registrado aqui como alerta de que até relatório de
 agente precisa ser conferido antes de virar fix, não só confiado.
+
+**Achado e NÃO corrigido (fora de escopo, registrado pra decidir depois)** — `main()` em
+`classify-prompt.py` sai (`sys.exit(0)`) pra QUALQUER prompt que comece com `/`, antes mesmo
+de checar `is_plan_request()`. Isso é intencional pra não classificar slash commands nativos
+do Claude Code (`/clear`, `/compact` etc.), mas como efeito colateral o padrão
+`r"^/plan\b"` em `PLAN_TRIGGER_PATTERNS` nunca é alcançado — código morto. Achado durante a
+regressão do #11 (`/plan migrar pro novo domínio` não disparou plan mode). Não é regressão
+de nada feito nesta sessão, é pré-existente desde o #9. Não mexi porque não foi pedido —
+avisar o Caio e perguntar se quer corrigir (ex: checar plan-trigger antes do skip de `/`,
+ou remover o padrão morto já que `/plan` como slash command de verdade nem existe no plugin).
 
 Baseado no design fechado em `2026-09-24-grill.md`. Licenças checadas: claude-router (bmersereau),
 barkain/claude-code-workflow-orchestration e piercelamb/deep-plan são todos MIT — dá pra reaproveitar

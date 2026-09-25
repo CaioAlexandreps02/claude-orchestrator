@@ -1,6 +1,6 @@
 {
   "name": "claude-orchestrator",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Classifica mensagens por complexidade, roteia direto pro modelo certo (Haiku/Sonnet/Opus) quando e simples, ou gera plano + decompoe em etapas com modelo proprio por etapa quando nao e.",
   "author": {
     "name": "Caio Alexandre",
